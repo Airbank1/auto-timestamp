@@ -486,30 +486,43 @@ class ManualProcessor:
     
     def parse_user_selection(self, choice, remaining_files):
         """Parse la sélection utilisateur et retourne le nom du fichier sélectionné"""
-        selected_filename = None
+        choice = choice.strip()
         
+        # 1. Nom exact du fichier (priorité absolue)
+        if choice in remaining_files:
+            return choice
+        
+        # 2. Si ligne copiée avec │, extraire juste le numéro après │
+        if '│' in choice:
+            number_match = re.search(r'│\s*(\d+)\.', choice)
+            if number_match:
+                try:
+                    file_index = int(number_match.group(1)) - 1
+                    if 0 <= file_index < len(remaining_files):
+                        return remaining_files[file_index]
+                except (ValueError, IndexError):
+                    pass
+        
+        # 3. Si c'est un numéro pur (avec ou sans point)
         try:
-            # Si c'est un numéro (avec ou sans point)
             if choice.isdigit() or (choice.endswith('.') and choice[:-1].isdigit()):
                 file_index = int(choice.rstrip('.')) - 1
                 if 0 <= file_index < len(remaining_files):
-                    selected_filename = remaining_files[file_index]
-            # Si c'est le nom complet du fichier
-            elif choice in remaining_files:
-                selected_filename = choice
-            # Si c'est la ligne complète copiée (ex: "│ 10. auto_timestamp_v8.py                                                         │")
-            else:
-                # Extraire le nom du fichier de la ligne complète
-                for i, filename in enumerate(remaining_files):
-                    # Chercher le pattern "│ X. filename" dans la sélection
-                    if f"{i+1:2}. {filename}" in choice or f" {i+1}. {filename}" in choice:
-                        selected_filename = filename
-                        break
-        except ValueError:
-            # Si ce n'est pas un nombre valide, essayer les autres options
+                    return remaining_files[file_index]
+        except (ValueError, IndexError):
             pass
         
-        return selected_filename
+        # 4. Chercher un numéro dans la chaîne
+        number_match = re.search(r'(\d+)\.', choice)
+        if number_match:
+            try:
+                file_index = int(number_match.group(1)) - 1
+                if 0 <= file_index < len(remaining_files):
+                    return remaining_files[file_index]
+            except (ValueError, IndexError):
+                pass
+        
+        return None
     
     def calculate_input_lines_used(self, choice):
         """Calcule le nombre de lignes utilisées par l'input utilisateur"""
